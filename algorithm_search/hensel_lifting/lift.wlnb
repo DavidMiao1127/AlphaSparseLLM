@@ -1,0 +1,306 @@
+{
+ "cells": [
+  {
+   "kind": 2,
+   "value": "filePath = \"\\\\path\\\\to\\\\your\\\\folder\\\\333-a11-mod2.exp\";        (*replace with your actual absolute file path*)\r\nk = 3;  (*the lifting target, can be manualy set*)\r\noutputPath = \"\\\\path\\\\to\\\\your\\\\folder\\\\333-a11-mod2-lifted.txt\";  (*replace with your actual absolute file path*)",
+   "languageId": "wolfram",
+   "outputs": [],
+   "metadata": {},
+   "executionSummary": {
+    "timing": {
+     "startTime": 1754377140944,
+     "endTime": 1754377141021
+    },
+    "executionOrder": 8,
+    "success": true
+   }
+  },
+  {
+   "kind": 2,
+   "value": "\r\nReadScheme[filename_] :=\r\n    Module[ {list, m, k, n, maxIndices, allVars, aVars, bVars, cVars, aIndices, bIndices, cIndices},\r\n      (* Read expressions *)\r\n      list = ToExpression /@ Select[Import[filename, \"Lines\"], (StringLength[#] > 0 && StringTake[#,1]!=\"#\")&];\r\n      Print[\"Raw expressions loaded: \", list];\r\n      \r\n      (* Get all variables and analyze indices *)\r\n      allVars = Union[Flatten[Cases[#, _Symbol, Infinity] & /@ list]];\r\n      aVars = Select[allVars, StringMatchQ[ToString[#], \"a\" ~~ DigitCharacter ~~ DigitCharacter]&];\r\n      bVars = Select[allVars, StringMatchQ[ToString[#], \"b\" ~~ DigitCharacter ~~ DigitCharacter]&];\r\n      cVars = Select[allVars, StringMatchQ[ToString[#], \"c\" ~~ DigitCharacter ~~ DigitCharacter]&];\r\n      \r\n      Print[\"Variables found: A=\", aVars, \", B=\", bVars, \", C=\", cVars];\r\n      \r\n      (* Extract indices *)\r\n      aIndices = Table[{ToExpression[StringTake[ToString[var], {2, 2}]], ToExpression[StringTake[ToString[var], {3, 3}]]}, {var, aVars}];\r\n      bIndices = Table[{ToExpression[StringTake[ToString[var], {2, 2}]], ToExpression[StringTake[ToString[var], {3, 3}]]}, {var, bVars}];\r\n      cIndices = Table[{ToExpression[StringTake[ToString[var], {2, 2}]], ToExpression[StringTake[ToString[var], {3, 3}]]}, {var, cVars}];\r\n      \r\n      (* Determine matrix dimensions correctly *)\r\n      (* A matrix: rows = max i, cols = max j *)\r\n      m = Max[aIndices[[All, 1]]];  (* A的行数 *)\r\n      k = Max[aIndices[[All, 2]]];  (* A的列数 = B的行数 *)\r\n      \r\n      (* B matrix: rows should match A's cols, cols = max j of B *)\r\n      If[Max[bIndices[[All, 1]]] != k,\r\n        Print[\"Warning: B matrix row count doesn't match A matrix column count\"];\r\n      ];\r\n      n = Max[bIndices[[All, 2]]];  (* B的列数 *)\r\n      \r\n      (* C matrix: For matrix multiplication A×B=C, C should be m×n *)\r\n      (* But from the variables, C appears to be stored in a different format *)\r\n      (* Let's check if C follows the pattern C[result_row, result_col] *)\r\n      cRows = Max[cIndices[[All, 1]]];\r\n      cCols = Max[cIndices[[All, 2]]];\r\n      \r\n      Print[\"Detected dimensions from variables:\"];\r\n      Print[\"  A: \", m, \"×\", k, \" (from indices: \", aIndices, \")\"];\r\n      Print[\"  B: \", Max[bIndices[[All, 1]]], \"×\", n, \" (from indices: \", bIndices, \")\"];\r\n      Print[\"  C: \", cRows, \"×\", cCols, \" (from indices: \", cIndices, \")\"];\r\n      \r\n      (* For matrix multiplication A(m×k) × B(k×n) = C(m×n) *)\r\n      (* But the C variables suggest a different indexing scheme *)\r\n      (* Let's assume C is stored as C[j,i] instead of C[i,j] (transposed) *)\r\n      \r\n      Print[\"Final dimensions: A(\", m, \"×\", k, \"), B(\", k, \"×\", n, \"), C(\", m, \"×\", n, \")\"];\r\n      Print[\"Note: C will be stored as transposed (\", n, \"×\", m, \") for algorithmic efficiency\"];\r\n      \r\n      (* Create tensor representation with correct variable matching *)\r\n      list = Table[{\r\n        Table[If[FreeQ[expr, Symbol[\"a\" <> ToString[i] <> ToString[j]]], 0, 1], {i, 1, m}, {j, 1, k}],\r\n        Table[If[FreeQ[expr, Symbol[\"b\" <> ToString[i] <> ToString[j]]], 0, 1], {i, 1, k}, {j, 1, n}],\r\n        (* C matrix: check both C[i,j] and C[j,i] patterns *)\r\n        Table[If[FreeQ[expr, Symbol[\"c\" <> ToString[j] <> ToString[i]]], 0, 1], {j, 1, n}, {i, 1, m}]\r\n      }, {expr, list}];\r\n      \r\n      list\r\n    ];\r\n\r\n(* Execute the function to read and process the scheme *)\r\nschemeData = ReadScheme[filePath];",
+   "languageId": "wolfram",
+   "outputs": [
+    {
+     "items": [
+      {
+       "data": "<pre>Raw expressions loaded: {a31 (b11 + b21 + b31) (c13 + c23), \n \n&gt;    (a13 + a21 + a23 + a31 + a33) (b13 + b22 + b32) c32, \n \n&gt;    (a12 + a13) b23 (c11 + c13 + c22 + c23 + c31 + c32), \n \n&gt;    (a13 + a21 + a22) (b23 + b31) (c11 + c13 + c21 + c23), \n \n&gt;    a13 (b23 + b33) (c31 + c33), \n \n&gt;    (a13 + a21 + a23 + a32 + a33) (b22 + b23 + b31 + b32) (c22 + c32), \n \n&gt;    (a13 + a22 + a23 + a31 + a33) (b22 + b23 + b31) (c13 + c23 + c32), \n \n&gt;    (a13 + a31 + a32) (b23 + b31 + b32) (c21 + c22 + c32 + c33), \n \n&gt;    a31 (b13 + b23 + b33) (c12 + c23 + c33), \n \n&gt;    (a12 + a21 + a22) (b21 + b23) (c11 + c13 + c21 + c22 + c23 + c32), \n \n&gt;    a31 (b11 + b12 + b13 + b21 + b22 + b23 + b31 + b32 + b33) (c12 + c23), \n \n&gt;    (a12 + a31 + a32) (b21 + b22 + b23) (c13 + c21 + c22 + c23 + c32), \n \n&gt;    (a21 + a31) (b11 + b12 + b21 + b22 + b31 + b32) c12, \n \n&gt;    (a31 + a32) (b21 + b22 + b31 + b32) (c21 + c22 + c23 + c32), \n \n&gt;    (a22 + a23) b31 (c12 + c13 + c22 + c23), \n \n&gt;    (a32 + a33) (b31 + b32) (c22 + c23 + c32 + c33), \n \n&gt;    (a21 + a22) (b21 + b31) (c11 + c12 + c13 + c21 + c22 + c23 + c32), \n \n&gt;    (a12 + a13 + a22 + a23 + a32 + a33) (b22 + b23) (c13 + c22 + c23 + c32), \n \n&gt;    a21 (b12 + b22 + b32) (c12 + c22), \n \n&gt;    (a13 + a31 + a33) (b31 + b32 + b33) (c32 + c33), \n \n&gt;    (a13 + a23 + a31 + a33) (b13 + b23 + b33) c32}\n</pre>",
+       "mime": "x-application/wolfram-language-html"
+      },
+      {
+       "data": "\"Raw expressions loaded: {a31 (b11 + b21 + b31) (c13 + c23), \\n \\n>    (a13 + a21 + a23 + a31 + a33) (b13 + b22 + b32) c32, \\n \\n>    (a12 + a13) b23 (c11 + c13 + c22 + c23 + c31 + c32), \\n \\n>    (a13 + a21 + a22) (b23 + b31) (c11 + c13 + c21 + c23), \\n \\n>    a13 (b23 + b33) (c31 + c33), \\n \\n>    (a13 + a21 + a23 + a32 + a33) (b22 + b23 + b31 + b32) (c22 + c32), \\n \\n>    (a13 + a22 + a23 + a31 + a33) (b22 + b23 + b31) (c13 + c23 + c32), \\n \\n>    (a13 + a31 + a32) (b23 + b31 + b32) (c21 + c22 + c32 + c33), \\n \\n>    a31 (b13 + b23 + b33) (c12 + c23 + c33), \\n \\n>    (a12 + a21 + a22) (b21 + b23) (c11 + c13 + c21 + c22 + c23 + c32), \\n \\n>    a31 (b11 + b12 + b13 + b21 + b22 + b23 + b31 + b32 + b33) (c12 + c23), \\n \\n>    (a12 + a31 + a32) (b21 + b22 + b23) (c13 + c21 + c22 + c23 + c32), \\n \\n>    (a21 + a31) (b11 + b12 + b21 + b22 + b31 + b32) c12, \\n \\n>    (a31 + a32) (b21 + b22 + b31 + b32) (c21 + c22 + c23 + c32), \\n \\n>    (a22 + a23) b31 (c12 + c13 + c22 + c23), \\n \\n>    (a32 + a33) (b31 + b32) (c22 + c23 + c32 + c33), \\n \\n>    (a21 + a22) (b21 + b31) (c11 + c12 + c13 + c21 + c22 + c23 + c32), \\n \\n>    (a12 + a13 + a22 + a23 + a32 + a33) (b22 + b23) (c13 + c22 + c23 + c32), \\n \\n>    a21 (b12 + b22 + b32) (c12 + c22), \\n \\n>    (a13 + a31 + a33) (b31 + b32 + b33) (c32 + c33), \\n \\n>    (a13 + a23 + a31 + a33) (b13 + b23 + b33) c32}\\n\"",
+       "mime": "text/plain"
+      }
+     ],
+     "id": "1d82065d-24a5-449a-b83f-6b16cb8658e2",
+     "metadata": {
+      "cellLabel": "",
+      "isBoxData": false
+     }
+    },
+    {
+     "items": [
+      {
+       "data": "<pre>Variables found: A={a12, a13, a21, a22, a23, a31, a32, a33}, B=\n \n&gt;   {b11, b12, b13, b21, b22, b23, b31, b32, b33}, C=\n \n&gt;   {c11, c12, c13, c21, c22, c23, c31, c32, c33}\n</pre>",
+       "mime": "x-application/wolfram-language-html"
+      },
+      {
+       "data": "\"Variables found: A={a12, a13, a21, a22, a23, a31, a32, a33}, B=\\n \\n>   {b11, b12, b13, b21, b22, b23, b31, b32, b33}, C=\\n \\n>   {c11, c12, c13, c21, c22, c23, c31, c32, c33}\\n\"",
+       "mime": "text/plain"
+      }
+     ],
+     "id": "4c839549-29ce-4902-9f6f-5267fe832c7a",
+     "metadata": {
+      "cellLabel": "",
+      "isBoxData": false
+     }
+    },
+    {
+     "items": [
+      {
+       "data": "<pre>Detected dimensions from variables:\n</pre>",
+       "mime": "x-application/wolfram-language-html"
+      },
+      {
+       "data": "\"Detected dimensions from variables:\\n\"",
+       "mime": "text/plain"
+      }
+     ],
+     "id": "30aaa253-6803-4757-bdf1-85b9d6f58f60",
+     "metadata": {
+      "cellLabel": "",
+      "isBoxData": false
+     }
+    },
+    {
+     "items": [
+      {
+       "data": "<pre>  A: 3ꇁ3 (from indices: {{1, 2}, {1, 3}, {2, 1}, {2, 2}, {2, 3}, {3, 1}, \n \n&gt;    {3, 2}, {3, 3}})\n</pre>",
+       "mime": "x-application/wolfram-language-html"
+      },
+      {
+       "data": "\"  A: 3ꇁ3 (from indices: {{1, 2}, {1, 3}, {2, 1}, {2, 2}, {2, 3}, {3, 1}, \\n \\n>    {3, 2}, {3, 3}})\\n\"",
+       "mime": "text/plain"
+      }
+     ],
+     "id": "65e6db7e-53dd-448b-b012-48437b207af8",
+     "metadata": {
+      "cellLabel": "",
+      "isBoxData": false
+     }
+    },
+    {
+     "items": [
+      {
+       "data": "<pre>  B: 3ꇁ3 (from indices: {{1, 1}, {1, 2}, {1, 3}, {2, 1}, {2, 2}, {2, 3}, \n \n&gt;    {3, 1}, {3, 2}, {3, 3}})\n</pre>",
+       "mime": "x-application/wolfram-language-html"
+      },
+      {
+       "data": "\"  B: 3ꇁ3 (from indices: {{1, 1}, {1, 2}, {1, 3}, {2, 1}, {2, 2}, {2, 3}, \\n \\n>    {3, 1}, {3, 2}, {3, 3}})\\n\"",
+       "mime": "text/plain"
+      }
+     ],
+     "id": "6f5800fa-439b-4fbb-be2a-29c10ad9a2b6",
+     "metadata": {
+      "cellLabel": "",
+      "isBoxData": false
+     }
+    },
+    {
+     "items": [
+      {
+       "data": "<pre>  C: 3ꇁ3 (from indices: {{1, 1}, {1, 2}, {1, 3}, {2, 1}, {2, 2}, {2, 3}, \n \n&gt;    {3, 1}, {3, 2}, {3, 3}})\n</pre>",
+       "mime": "x-application/wolfram-language-html"
+      },
+      {
+       "data": "\"  C: 3ꇁ3 (from indices: {{1, 1}, {1, 2}, {1, 3}, {2, 1}, {2, 2}, {2, 3}, \\n \\n>    {3, 1}, {3, 2}, {3, 3}})\\n\"",
+       "mime": "text/plain"
+      }
+     ],
+     "id": "752cc340-397a-4a6f-9bc3-e8e4a7df5998",
+     "metadata": {
+      "cellLabel": "",
+      "isBoxData": false
+     }
+    },
+    {
+     "items": [
+      {
+       "data": "<pre>Final dimensions: A(3ꇁ3), B(3ꇁ3), C(3ꇁ3)\n</pre>",
+       "mime": "x-application/wolfram-language-html"
+      },
+      {
+       "data": "\"Final dimensions: A(3ꇁ3), B(3ꇁ3), C(3ꇁ3)\\n\"",
+       "mime": "text/plain"
+      }
+     ],
+     "id": "c42001fd-f081-4f39-bf59-79f85c49f963",
+     "metadata": {
+      "cellLabel": "",
+      "isBoxData": false
+     }
+    },
+    {
+     "items": [
+      {
+       "data": "<pre>Note: C will be stored as transposed (3ꇁ3) for algorithmic efficiency\n</pre>",
+       "mime": "x-application/wolfram-language-html"
+      },
+      {
+       "data": "\"Note: C will be stored as transposed (3ꇁ3) for algorithmic efficiency\\n\"",
+       "mime": "text/plain"
+      }
+     ],
+     "id": "04155540-4e3e-4dbc-b374-a7d869217dfd",
+     "metadata": {
+      "cellLabel": "",
+      "isBoxData": false
+     }
+    }
+   ],
+   "metadata": {},
+   "executionSummary": {
+    "timing": {
+     "startTime": 1754377142508,
+     "endTime": 1754377143367
+    },
+    "executionOrder": 9,
+    "success": true
+   }
+  },
+  {
+   "kind": 2,
+   "value": "Hensel[scheme_, nn_] := Module[ {},\r\n    s[1] = scheme;\r\n    Do[Henselstep[n], {n, 2, nn}];\r\n    Mod[s[nn], 2^nn, -2^(nn-1)]\r\n  ];\r\n\r\nHenselstep[n_Integer] := Module[ {},\r\n    rr = Length[s[n-1]];\r\n    nn = Length /@ s[n-1][[1]];\r\n    Print[\"Step \", n, \": Matrix dimensions A(\", nn[[1]], \"×\", nn[[2]], \"), B(\", nn[[2]], \"×\", nn[[3]], \"), C(\", nn[[1]], \"×\", nn[[3]], \")\"];\r\n    \r\n    yvars = Table[{Table[a[i,j,k], {i, 1, nn[[1]]}, {j, 1, nn[[2]]}],\r\n                   Table[b[i,j,k], {i, 1, nn[[2]]}, {j, 1, nn[[3]]}],\r\n                   Table[c[i,j,k], {i, 1, nn[[3]]}, {j, 1, nn[[1]]}]}, {k,1,rr}];\r\n    vars = Flatten[yvars]; \r\n    var2pos = Association[Table[vars[[i]] -> i, {i, 1, Length[vars]}]];\r\n    xvars = {Table[a[i,j], {i, 1, nn[[1]]}, {j, 1, nn[[2]]}],\r\n             Table[b[i,j], {i, 1, nn[[2]]}, {j, 1, nn[[3]]}],\r\n             Table[c[i,j], {i, 1, nn[[3]]}, {j, 1, nn[[1]]}]};\r\n    \r\n    (* Extract sparse pattern from the input scheme *)\r\n    sparseMask = {Table[0, {i, 1, nn[[1]]}, {j, 1, nn[[2]]}],\r\n                  Table[0, {i, 1, nn[[2]]}, {j, 1, nn[[3]]}],\r\n                  Table[0, {i, 1, nn[[3]]}, {j, 1, nn[[1]]}]};\r\n    \r\n    (* Determine which matrix elements are used (non-sparse) from s[n-1] *)\r\n    Do[\r\n      Do[\r\n        If[s[n-1][[k]][[matrix]][[i]][[j]] != 0,\r\n          sparseMask[[matrix]][[i]][[j]] = 1\r\n        ],\r\n      {i, 1, Length[s[n-1][[k]][[matrix]]]}, {j, 1, Length[s[n-1][[k]][[matrix]][[1]]]}],\r\n      {matrix, 1, 3}, {k, 1, rr}];\r\n    \r\n    Print[\"Sparse masks: A non-zeros: \", Total[Flatten[sparseMask[[1]]]], \r\n          \", B non-zeros: \", Total[Flatten[sparseMask[[2]]]], \r\n          \", C non-zeros: \", Total[Flatten[sparseMask[[3]]]]];\r\n    \r\n    ansatz = PolynomialMod[Expand[#], 2^n]& /@ (xvars*#)& /@ (s[n-1] + 2^(n-1) yvars) /. {u_,v_,w_} :> Plus@@Flatten[u]Plus@@Flatten[v]Plus@@Flatten[w];\r\n    \r\n    (* Construct sparse-aware target sum: only include non-zero elements *)\r\n    targetSum = Sum[\r\n      If[sparseMask[[1]][[i]][[j]] == 1 && sparseMask[[2]][[j]][[k]] == 1 && sparseMask[[3]][[k]][[i]] == 1,\r\n        a[i,j]*b[j,k]*c[k,i],\r\n        0\r\n      ],\r\n      {i, 1, nn[[1]]}, {j, 1, nn[[2]]}, {k, 1, nn[[3]]}\r\n    ];\r\n    \r\n    ansatz = Expand[#/2^(n-1)]& /@ ((PolynomialMod[#, 2^n]& /@ (Plus@@ansatz)) - targetSum);\r\n    \r\n    (* hensel lifting *)\r\n    vars2 = Union[Cases[ansatz, _[_Integer,_Integer], Infinity]];\r\n    sys = Fold[DeleteCases[Flatten[Function[x,CoefficientList[x,#2]] /@ #1], 0]&, {ansatz}, vars2];\r\n    mat = Table[0, {i, Length[sys]}, {j, 1, Length[vars]}]; rhs = sys /. (a|b|c)[__] -> 0;\r\n    Do[mat[[i,var2pos[x]]]=1, {i, 1, Length[sys]}, {x, Variables[sys[[i]]]}];\r\n    sol = LinearSolve[mat, rhs, Modulus -> 2];\r\n    If[ Head[sol]=!=List, Throw[\"not liftable\"] ];\r\n    s[n] = (s[n-1] + 2^(n-1) yvars) /. Thread[vars -> sol];\r\n    \r\n    Print[\"Successfully lifted to modulus 2^\", n];\r\n    s[n]\r\n  ];\r\n\r\n\r\nresult = Hensel[schemeData, k]; \r\nExport[outputPath, ToString[result], \"Text\"]  \r\nPrint[\"Result of Hensel lifting: \", result];\r\n",
+   "languageId": "wolfram",
+   "outputs": [
+    {
+     "items": [
+      {
+       "data": "<pre>Step 2: Matrix dimensions A(3ꇁ3), B(3ꇁ3), C(3ꇁ3)\n</pre>",
+       "mime": "x-application/wolfram-language-html"
+      },
+      {
+       "data": "\"Step 2: Matrix dimensions A(3ꇁ3), B(3ꇁ3), C(3ꇁ3)\\n\"",
+       "mime": "text/plain"
+      }
+     ],
+     "id": "69ed3347-67e7-4277-90a2-31e308ec7237",
+     "metadata": {
+      "cellLabel": "",
+      "isBoxData": false
+     }
+    },
+    {
+     "items": [
+      {
+       "data": "<pre>Sparse masks: A non-zeros: 8, B non-zeros: 9, C non-zeros: 9\n</pre>",
+       "mime": "x-application/wolfram-language-html"
+      },
+      {
+       "data": "\"Sparse masks: A non-zeros: 8, B non-zeros: 9, C non-zeros: 9\\n\"",
+       "mime": "text/plain"
+      }
+     ],
+     "id": "e96df9e6-87f2-47ac-aacf-351c046cdcde",
+     "metadata": {
+      "cellLabel": "",
+      "isBoxData": false
+     }
+    },
+    {
+     "items": [
+      {
+       "data": "<pre>Successfully lifted to modulus 2^2\n</pre>",
+       "mime": "x-application/wolfram-language-html"
+      },
+      {
+       "data": "\"Successfully lifted to modulus 2^2\\n\"",
+       "mime": "text/plain"
+      }
+     ],
+     "id": "93f0ba37-22fa-4964-9d4a-0ffd84acdea2",
+     "metadata": {
+      "cellLabel": "",
+      "isBoxData": false
+     }
+    },
+    {
+     "items": [
+      {
+       "data": "<pre>Step 3: Matrix dimensions A(3ꇁ3), B(3ꇁ3), C(3ꇁ3)\n</pre>",
+       "mime": "x-application/wolfram-language-html"
+      },
+      {
+       "data": "\"Step 3: Matrix dimensions A(3ꇁ3), B(3ꇁ3), C(3ꇁ3)\\n\"",
+       "mime": "text/plain"
+      }
+     ],
+     "id": "4986deee-0661-445b-a37b-5e892aecbcb9",
+     "metadata": {
+      "cellLabel": "",
+      "isBoxData": false
+     }
+    },
+    {
+     "items": [
+      {
+       "data": "<pre>Sparse masks: A non-zeros: 8, B non-zeros: 9, C non-zeros: 9\n</pre>",
+       "mime": "x-application/wolfram-language-html"
+      },
+      {
+       "data": "\"Sparse masks: A non-zeros: 8, B non-zeros: 9, C non-zeros: 9\\n\"",
+       "mime": "text/plain"
+      }
+     ],
+     "id": "e57e622d-4210-4837-b288-16538efb4b87",
+     "metadata": {
+      "cellLabel": "",
+      "isBoxData": false
+     }
+    },
+    {
+     "items": [
+      {
+       "data": "<pre>Successfully lifted to modulus 2^3\n</pre>",
+       "mime": "x-application/wolfram-language-html"
+      },
+      {
+       "data": "\"Successfully lifted to modulus 2^3\\n\"",
+       "mime": "text/plain"
+      }
+     ],
+     "id": "6db45046-77dd-4cab-bf9f-9aed16f1a388",
+     "metadata": {
+      "cellLabel": "",
+      "isBoxData": false
+     }
+    },
+    {
+     "items": [
+      {
+       "data": "<pre>Result of Hensel lifting: {{{{0, 0, 0}, {0, 0, 0}, {-1, 0, 0}}, \n \n&gt;     {{-3, 0, 2}, {-3, -4, -2}, {1, 0, 2}}, \n \n&gt;     {{0, 2, 3}, {0, 0, 1}, {0, 0, -4}}}, \n \n&gt;    {{{0, 0, 1}, {-1, 0, 1}, {3, 0, 1}}, \n \n&gt;     {{0, 0, -1}, {0, -1, -2}, {0, 1, 0}}, {{0, 0, 0}, {0, 0, 0}, {0, 1, 0}}}\n \n&gt;     , {{{0, 3, 3}, {0, 0, 0}, {-4, -2, -2}}, \n \n&gt;     {{0, 0, 0}, {2, 2, 1}, {0, 0, 0}}, \n \n&gt;     {{1, 2, -3}, {-2, -3, -3}, {1, 1, -2}}}, \n \n&gt;    {{{0, 0, 1}, {-1, 1, 0}, {0, -2, 2}}, \n \n&gt;     {{0, 0, 0}, {-2, -2, -1}, {1, 0, 0}}, \n \n&gt;     {{3, -2, -1}, {-3, 2, 1}, {0, 0, 0}}}, \n \n&gt;    {{{0, 0, -1}, {0, 0, 0}, {2, 0, -2}}, \n \n&gt;     {{0, 0, 0}, {-2, -2, -1}, {2, 2, 1}}, \n \n&gt;     {{0, 0, 0}, {0, 0, 0}, {-3, 2, 1}}}, \n \n&gt;    {{{0, -2, -1}, {1, 0, -1}, {-2, 3, -1}}, \n \n&gt;     {{0, 0, 0}, {0, 1, 1}, {1, 1, 0}}, {{0, 0, 0}, {0, -1, 0}, {0, 1, 0}}}, \n \n&gt;    {{{0, 0, 1}, {-2, 1, 1}, {-3, -2, 1}}, \n \n&gt;     {{0, 0, 0}, {0, 1, 1}, {1, 0, 0}}, {{-2, 2, 1}, {2, -2, -1}, {0, 1, 0}}}\n \n&gt;     , {{{0, -2, 3}, {0, 0, 0}, {3, -1, -2}}, \n \n&gt;     {{0, 0, 0}, {-2, -2, -1}, {1, 1, 0}}, \n \n&gt;     {{0, 0, 0}, {-1, -1, 2}, {0, -1, 1}}}, \n \n&gt;    {{{0, 0, 0}, {0, 0, 0}, {-3, 0, 0}}, \n \n&gt;     {{-4, 0, -3}, {-4, 0, -3}, {0, -4, 1}}, \n \n&gt;     {{0, -3, -2}, {0, 0, 1}, {0, 2, 1}}}, \n \n&gt;    {{{0, 1, 0}, {1, -1, 0}, {-4, -4, 0}}, \n \n&gt;     {{0, 0, 0}, {1, 2, 1}, {0, 0, 0}}, {{-3, 2, 1}, {3, -3, -1}, {0, 1, 0}}}\n \n&gt;     , {{{0, 0, 0}, {0, 0, 0}, {-3, 0, 0}}, \n \n&gt;     {{-3, -3, -3}, {-3, -3, -3}, {1, 1, 1}}, \n \n&gt;     {{0, -1, 0}, {0, 0, 1}, {0, 0, 0}}}, \n \n&gt;    {{{0, -1, 0}, {0, 0, 0}, {3, -3, 0}}, {{0, 0, 0}, {1, 1, 1}, {0, 0, 0}}, \n \n&gt;     {{2, -2, -1}, {1, -3, 3}, {2, 1, -4}}}, \n \n&gt;    {{{0, 0, 0}, {-1, 0, 0}, {1, 0, 0}}, \n \n&gt;     {{-1, 1, 0}, {-1, 1, 0}, {-1, 1, 0}}, {{0, 1, 0}, {0, 0, 0}, {0, 0, 0}}}\n \n&gt;     , {{{0, 2, 0}, {0, 0, 0}, {-1, 1, 0}}, \n \n&gt;     {{0, 0, 0}, {-1, -1, 0}, {1, 1, 0}}, \n \n&gt;     {{0, 0, 0}, {1, -3, -3}, {-2, 1, -2}}}, \n \n&gt;    {{{0, 0, 0}, {-2, 1, 1}, {-4, -2, -2}}, \n \n&gt;     {{0, 0, 0}, {0, 0, 0}, {1, 0, 0}}, {{2, -1, -1}, {-2, 1, 1}, {0, 0, 0}}}\n \n&gt;     , {{{0, -2, -2}, {0, 0, 0}, {2, 3, 3}}, \n \n&gt;     {{0, 0, 0}, {0, 0, 0}, {1, 1, 0}}, {{0, 0, 0}, {2, -1, -1}, {-2, 1, 1}}}\n \n&gt;     , {{{0, 0, 0}, {1, -1, 0}, {-2, 2, 0}}, \n \n&gt;     {{0, 0, 0}, {-1, 0, 0}, {1, 0, 0}}, \n \n&gt;     {{3, -1, -1}, {-3, 1, 1}, {0, 1, 0}}}, \n \n&gt;    {{{0, 1, 1}, {-2, 1, 1}, {-2, 1, 1}}, {{0, 0, 0}, {0, 1, 1}, {0, 0, 0}}, \n \n&gt;     {{2, -2, -1}, {-2, 1, 1}, {0, 1, 0}}}, \n \n&gt;    {{{0, 0, 0}, {1, 0, 0}, {0, 0, 0}}, {{0, 1, 0}, {0, 1, 0}, {0, 1, 0}}, \n \n&gt;     {{0, 1, 0}, {0, 1, 0}, {0, 0, 0}}}, \n \n&gt;    {{{0, 0, 1}, {0, 0, 0}, {1, 0, 3}}, {{0, 0, 0}, {0, 0, 0}, {1, 1, 1}}, \n \n&gt;     {{0, 0, 0}, {0, 0, 0}, {-2, 1, 1}}}, \n \n&gt;    {{{0, 0, 1}, {0, 0, 1}, {1, 0, 1}}, {{0, 0, 1}, {0, 0, 1}, {0, 0, 1}}, \n \n&gt;     {{0, 0, 0}, {0, 0, 0}, {0, 1, 0}}}}\n</pre>",
+       "mime": "x-application/wolfram-language-html"
+      },
+      {
+       "data": "\"Result of Hensel lifting: {{{{0, 0, 0}, {0, 0, 0}, {-1, 0, 0}}, \\n \\n>     {{-3, 0, 2}, {-3, -4, -2}, {1, 0, 2}}, \\n \\n>     {{0, 2, 3}, {0, 0, 1}, {0, 0, -4}}}, \\n \\n>    {{{0, 0, 1}, {-1, 0, 1}, {3, 0, 1}}, \\n \\n>     {{0, 0, -1}, {0, -1, -2}, {0, 1, 0}}, {{0, 0, 0}, {0, 0, 0}, {0, 1, 0}}}\\n \\n>     , {{{0, 3, 3}, {0, 0, 0}, {-4, -2, -2}}, \\n \\n>     {{0, 0, 0}, {2, 2, 1}, {0, 0, 0}}, \\n \\n>     {{1, 2, -3}, {-2, -3, -3}, {1, 1, -2}}}, \\n \\n>    {{{0, 0, 1}, {-1, 1, 0}, {0, -2, 2}}, \\n \\n>     {{0, 0, 0}, {-2, -2, -1}, {1, 0, 0}}, \\n \\n>     {{3, -2, -1}, {-3, 2, 1}, {0, 0, 0}}}, \\n \\n>    {{{0, 0, -1}, {0, 0, 0}, {2, 0, -2}}, \\n \\n>     {{0, 0, 0}, {-2, -2, -1}, {2, 2, 1}}, \\n \\n>     {{0, 0, 0}, {0, 0, 0}, {-3, 2, 1}}}, \\n \\n>    {{{0, -2, -1}, {1, 0, -1}, {-2, 3, -1}}, \\n \\n>     {{0, 0, 0}, {0, 1, 1}, {1, 1, 0}}, {{0, 0, 0}, {0, -1, 0}, {0, 1, 0}}}, \\n \\n>    {{{0, 0, 1}, {-2, 1, 1}, {-3, -2, 1}}, \\n \\n>     {{0, 0, 0}, {0, 1, 1}, {1, 0, 0}}, {{-2, 2, 1}, {2, -2, -1}, {0, 1, 0}}}\\n \\n>     , {{{0, -2, 3}, {0, 0, 0}, {3, -1, -2}}, \\n \\n>     {{0, 0, 0}, {-2, -2, -1}, {1, 1, 0}}, \\n \\n>     {{0, 0, 0}, {-1, -1, 2}, {0, -1, 1}}}, \\n \\n>    {{{0, 0, 0}, {0, 0, 0}, {-3, 0, 0}}, \\n \\n>     {{-4, 0, -3}, {-4, 0, -3}, {0, -4, 1}}, \\n \\n>     {{0, -3, -2}, {0, 0, 1}, {0, 2, 1}}}, \\n \\n>    {{{0, 1, 0}, {1, -1, 0}, {-4, -4, 0}}, \\n \\n>     {{0, 0, 0}, {1, 2, 1}, {0, 0, 0}}, {{-3, 2, 1}, {3, -3, -1}, {0, 1, 0}}}\\n \\n>     , {{{0, 0, 0}, {0, 0, 0}, {-3, 0, 0}}, \\n \\n>     {{-3, -3, -3}, {-3, -3, -3}, {1, 1, 1}}, \\n \\n>     {{0, -1, 0}, {0, 0, 1}, {0, 0, 0}}}, \\n \\n>    {{{0, -1, 0}, {0, 0, 0}, {3, -3, 0}}, {{0, 0, 0}, {1, 1, 1}, {0, 0, 0}}, \\n \\n>     {{2, -2, -1}, {1, -3, 3}, {2, 1, -4}}}, \\n \\n>    {{{0, 0, 0}, {-1, 0, 0}, {1, 0, 0}}, \\n \\n>     {{-1, 1, 0}, {-1, 1, 0}, {-1, 1, 0}}, {{0, 1, 0}, {0, 0, 0}, {0, 0, 0}}}\\n \\n>     , {{{0, 2, 0}, {0, 0, 0}, {-1, 1, 0}}, \\n \\n>     {{0, 0, 0}, {-1, -1, 0}, {1, 1, 0}}, \\n \\n>     {{0, 0, 0}, {1, -3, -3}, {-2, 1, -2}}}, \\n \\n>    {{{0, 0, 0}, {-2, 1, 1}, {-4, -2, -2}}, \\n \\n>     {{0, 0, 0}, {0, 0, 0}, {1, 0, 0}}, {{2, -1, -1}, {-2, 1, 1}, {0, 0, 0}}}\\n \\n>     , {{{0, -2, -2}, {0, 0, 0}, {2, 3, 3}}, \\n \\n>     {{0, 0, 0}, {0, 0, 0}, {1, 1, 0}}, {{0, 0, 0}, {2, -1, -1}, {-2, 1, 1}}}\\n \\n>     , {{{0, 0, 0}, {1, -1, 0}, {-2, 2, 0}}, \\n \\n>     {{0, 0, 0}, {-1, 0, 0}, {1, 0, 0}}, \\n \\n>     {{3, -1, -1}, {-3, 1, 1}, {0, 1, 0}}}, \\n \\n>    {{{0, 1, 1}, {-2, 1, 1}, {-2, 1, 1}}, {{0, 0, 0}, {0, 1, 1}, {0, 0, 0}}, \\n \\n>     {{2, -2, -1}, {-2, 1, 1}, {0, 1, 0}}}, \\n \\n>    {{{0, 0, 0}, {1, 0, 0}, {0, 0, 0}}, {{0, 1, 0}, {0, 1, 0}, {0, 1, 0}}, \\n \\n>     {{0, 1, 0}, {0, 1, 0}, {0, 0, 0}}}, \\n \\n>    {{{0, 0, 1}, {0, 0, 0}, {1, 0, 3}}, {{0, 0, 0}, {0, 0, 0}, {1, 1, 1}}, \\n \\n>     {{0, 0, 0}, {0, 0, 0}, {-2, 1, 1}}}, \\n \\n>    {{{0, 0, 1}, {0, 0, 1}, {1, 0, 1}}, {{0, 0, 1}, {0, 0, 1}, {0, 0, 1}}, \\n \\n>     {{0, 0, 0}, {0, 0, 0}, {0, 1, 0}}}}\\n\"",
+       "mime": "text/plain"
+      }
+     ],
+     "id": "8d33eb97-df5a-4e8d-90e7-597f6d6bdf5b",
+     "metadata": {
+      "cellLabel": "",
+      "isBoxData": false
+     }
+    }
+   ],
+   "metadata": {},
+   "executionSummary": {
+    "timing": {
+     "startTime": 1754377372522,
+     "endTime": 1754377374276
+    },
+    "executionOrder": 30,
+    "success": true
+   }
+  }
+ ]
+}
