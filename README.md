@@ -49,8 +49,7 @@ $$
  c _ { 11 } & c _ { 12 } \\
  c _ { 21 } & c _ { 22 }
 \end{array}
-\right)
-=
+\right) =
 \left(
 \begin{array}{cc}
 0 & a _ { 12 } \\
@@ -133,7 +132,7 @@ outputPath = "\\path\\to\\your\\folder\\333-a11-mod2-lifted.txt";
 ```
 
 - `filePath` is the **absolute path** where the strategy generated after Flip that needs to be lifted is stored
-- `k` is the target of lifting, which means the program would lift the strategy from a mod-2 one to a mod-$2^k$ one.
+- `k` is the target of lifting, which means the program would lift the strategy from a mod-2 one to a mod-\(2^k\) one.
 - `outputPath` is the **absolute path** where you store the lifted result, which is presented in a tensor format.
 
 After lifting, a result file will be generated, which is a matrix multiplication strategy for target modulus 2k. We include two scripts for you to further process the lifted results:
