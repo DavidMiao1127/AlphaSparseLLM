@@ -24,21 +24,26 @@ Take a  $2\times 2\times 2$ sparse matrix multiplication algorithm with the (1,1
 For the part contains a and b, each row corresponds to an intermediate variable $M_i$ calculated by adding or subtracting elements from A and B:
 
 $$
-M_1=A_{22}(B_{11}+B_{22})\\
-M_2=(A_{21}+A_{22})B_{11}\\
-M_3=A_{22}(B_{21}-B_{11})\\
-M_4=A_{12}B_{22}\\
-M_5=A_{21}(B_{11}+B_{12})\\
-M_6=(A_{12}-A_{22})(B_{21}+B_{22})
+\begin{aligned}
+M_1 &= A_{22}(B_{11}+B_{22}) \\
+M_2 &= (A_{21}+A_{22})B_{11} \\
+M_3 &= A_{22}(B_{21}-B_{11}) \\
+M_4 &= A_{12}B_{22} \\
+M_5 &= A_{21}(B_{11}+B_{12}) \\
+M_6 &= (A_{12}-A_{22})(B_{21}+B_{22})
+\end{aligned}
 $$
+
 
 For the part contains c, each row represents the role of the intermediate variable $M_i$ when calculating a specific element of the final matrix C. The coefficient in front of $C_{xy}$ represents the actual coefficient of $M_i$ when computing the element $(y,x)$ of matrix C. (To be consistent with the notation for tensor low-rank decomposition, the subscript of c needs to be **transposed**)
 
 $$
-C_{11}=M_1+M_3-M_4+M_6\\
-C_{12}=M_4\\
-C_{21}=M_2+M_3\\
-C_{22}=M_1-M_2+M_5
+\begin{aligned}
+C_{11} &= M_1 + M_3 - M_4 + M_6 \\
+C_{12} &= M_4 \\
+C_{21} &= M_2 + M_3 \\
+C_{22} &= M_1 - M_2 + M_5
+\end{aligned}
 $$
 
 The decomposition algorithm above is equivalent to the matrix multiplication calculation below:
